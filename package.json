@@ -14,7 +14,7 @@
   ],
   "author": "jacob.jiang",
   "repository": {
-    "url": "https://github.com/oloshe/pretty-event-bus"
+    "url": "https://github.com/oloshe/pretty-http-client"
   },
   "license": "ISC",
   "devDependencies": {
