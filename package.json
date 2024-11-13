@@ -1,0 +1,27 @@
+{
+  "name": "pretty-http-client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx tsc"
+  },
+  "keywords": [
+    "typescript",
+    "http",
+    "axios",
+    "ky"
+  ],
+  "author": "jacob.jiang",
+  "repository": {
+    "url": "https://github.com/oloshe/pretty-event-bus"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "@types/json-bigint": "^1.0.4",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "json-bigint": "^1.0.0"
+  }
+}
