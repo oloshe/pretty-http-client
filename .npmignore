@@ -1,0 +1,6 @@
+/.vscode
+/converage
+/src
+/test
+vitest.config.js
+vite.config.ts
