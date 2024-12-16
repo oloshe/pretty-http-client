@@ -19,22 +19,35 @@ it("get - cache", async () => {
     hooks: {
       afterResponse: [(client, req, res) => res.json()],
     },
+    cacheSize: 3,
   });
-  const getData = () =>
+  const getData = (params?: any) =>
     client.get<number>("/timestamp", {
+      searchParams: params,
       cache: {
         milliseconds: 100,
-        matcher: (_, req) => req.url,
+        matcher: (_, req) => req.url + JSON.stringify(req.searchParams),
       },
     });
   const timestamp1 = await getData();
-  await delay(50);
   const timestamp2 = await getData();
   // 由于缓存，所以两次请求返回的都是同一个时间戳
   expect(timestamp2).toEqual(timestamp1);
-  await delay(51);
+  expect(client.cache.size).toBe(1);
+  await delay(150);
   const timestamp3 = await getData();
   expect(timestamp3).not.toEqual(timestamp1);
+
+  expect(client.cache.size).toBe(1);
+  await Promise.all([
+    getData({ a: 1 }),
+    getData({ a: 2 }),
+    getData({ a: 3 }),
+    getData({ a: 4 }),
+  ]);
+  expect(client.cache.size).toBe(3);
+  client.cache.clear();
+  expect(client.cache.size).toBe(0);
 });
 
 it("post - json", async () => {
@@ -54,20 +67,20 @@ it("post - json", async () => {
     address: string;
   }
 
-  const resp = await client.post<{ msg: string; data: { body: BodyData; query: any } }>(
-    "/post",
-    {
-      data: {
-        name: "John",
-        age: 18,
-        address: "New York",
-      },
-      searchParams: {
-        noNull: null,
-        noUndefined: undefined
-      }
-    }
-  );
+  const resp = await client.post<{
+    msg: string;
+    data: { body: BodyData; query: any };
+  }>("/post", {
+    data: {
+      name: "John",
+      age: 18,
+      address: "New York",
+    },
+    searchParams: {
+      noNull: null,
+      noUndefined: undefined,
+    },
+  });
   expect(resp.msg).toBe("ok");
   expect(resp.data.body.name).toBe("John");
   expect(resp.data.body.age).toBe(18);
@@ -122,6 +135,7 @@ it("hook - beforeRequest", async () => {
 });
 
 it("hook - afterResponse", async () => {
+  let errorHappened = false;
   interface BaseResponse<T = any> {
     code: number;
     msg: string;
@@ -141,7 +155,12 @@ it("hook - afterResponse", async () => {
           }
         },
         (client, req, res: BaseResponse) => {
-          console.log('response is', res);
+          console.log("response is", res);
+        },
+      ],
+      catchError: [
+        (e) => {
+          errorHappened = true;
         },
       ],
     },
@@ -151,6 +170,7 @@ it("hook - afterResponse", async () => {
   const resp = await getBusiness(false);
   expect(resp.name).toBe("test");
   await expect(getBusiness(true)).rejects.toThrow("error");
+  expect(errorHappened).toBe(true);
 });
 
 it("retry", async () => {
@@ -171,6 +191,6 @@ it("retry", async () => {
   try {
     const resp = await client.get<Response>("/error");
     expect(resp.status).toBe(500);
-  } catch (e) { }
+  } catch (e) {}
   expect(retryCount).toBe(2);
 });

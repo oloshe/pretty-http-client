@@ -60,6 +60,8 @@ interface CreateHttpClientOptions<T = Response> {
     retryCount?: number;
     /** 重试延迟 */
     retryTimeout?: number;
+    /** 缓存大小 */
+    cacheSize?: number;
 }
 type MethodRequest = <T = Response>(url: string, options?: Partial<RequestOptions>) => Promise<T>;
 interface ClientHook {
@@ -77,29 +79,58 @@ interface ClientHook {
  */
 interface HttpClient {
     /** 前缀 */
-    prefix: string;
+    readonly prefix: string;
     /** 别名 */
-    alias: string;
+    readonly alias: string;
     /** 通用请求头 */
-    headers: Record<string, string>;
+    readonly headers: Record<string, string>;
     /** 请求钩子 */
-    hooks: ClientHook;
+    readonly hooks: ClientHook;
     /** 重试次数 */
-    retryCount: number;
+    readonly retryCount: number;
     /** 重试延迟 */
-    retryTimeout: number;
+    readonly retryTimeout: number;
+    /** LRU 缓存 */
+    readonly cache: LRUCache<string, Response>;
     /** GET 请求 */
-    get: MethodRequest;
+    readonly get: MethodRequest;
     /** POST 请求 */
-    post: MethodRequest;
+    readonly post: MethodRequest;
     /** PUT 请求 */
-    put: MethodRequest;
+    readonly put: MethodRequest;
     /** DELETE 请求 */
-    delete: MethodRequest;
+    readonly delete: MethodRequest;
     /** PATCH 请求 */
-    patch: MethodRequest;
+    readonly patch: MethodRequest;
     /** HEAD 请求 */
-    head: MethodRequest;
+    readonly head: MethodRequest;
 }
 export declare const createHttpClient: <T = Response>(options?: CreateHttpClientOptions<T>) => HttpClient;
+declare class LRUCache<K, V> {
+    private cache;
+    private maxSize;
+    constructor(maxSize: number);
+    /**
+     * 添加缓存
+     * @param key 键
+     * @param value 值
+     * @param activeTime 有效时间（毫秒）
+     */
+    set(key: K, value: V, activeTime: number): void;
+    /**
+     * 获取缓存
+     * @param key 键
+     * @returns 值或者 null（过期或不存在时）
+     */
+    get(key: K): V | null;
+    /**
+     * 获取当前缓存大小
+     * @returns 缓存项的数量
+     */
+    get size(): number;
+    /**
+     * 清空缓存
+     */
+    clear(): void;
+}
 export {};

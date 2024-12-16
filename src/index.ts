@@ -74,6 +74,8 @@ interface CreateHttpClientOptions<T = Response> {
   retryCount?: number;
   /** 重试延迟 */
   retryTimeout?: number;
+  /** 缓存大小 */
+  cacheSize?: number;
 }
 
 type MethodRequest = <T = Response>(
@@ -97,29 +99,31 @@ interface ClientHook {
  */
 interface HttpClient {
   /** 前缀 */
-  prefix: string;
+  readonly prefix: string;
   /** 别名 */
-  alias: string;
+  readonly alias: string;
   /** 通用请求头 */
-  headers: Record<string, string>;
+  readonly headers: Record<string, string>;
   /** 请求钩子 */
-  hooks: ClientHook;
+  readonly hooks: ClientHook;
   /** 重试次数 */
-  retryCount: number;
+  readonly retryCount: number;
   /** 重试延迟 */
-  retryTimeout: number;
+  readonly retryTimeout: number;
+  /** LRU 缓存 */
+  readonly cache: LRUCache<string, Response>;
   /** GET 请求 */
-  get: MethodRequest;
+  readonly get: MethodRequest;
   /** POST 请求 */
-  post: MethodRequest;
+  readonly post: MethodRequest;
   /** PUT 请求 */
-  put: MethodRequest;
+  readonly put: MethodRequest;
   /** DELETE 请求 */
-  delete: MethodRequest;
+  readonly delete: MethodRequest;
   /** PATCH 请求 */
-  patch: MethodRequest;
+  readonly patch: MethodRequest;
   /** HEAD 请求 */
-  head: MethodRequest;
+  readonly head: MethodRequest;
 }
 
 export const createHttpClient = <T = Response>(
@@ -141,6 +145,7 @@ export const createHttpClient = <T = Response>(
     },
     retryCount: options?.retryCount ?? 0,
     retryTimeout: options?.retryTimeout ?? 0,
+    cache: new LRUCache(options?.cacheSize ?? 10000),
     get: _sendSequest("GET"),
     post: _sendSequest("POST"),
     put: _sendSequest("PUT"),
@@ -198,7 +203,7 @@ const sendSequest = async <T = Response>(
   if (useCache) {
     cacheKey = options.cache?.matcher(client, req);
     if (cacheKey) {
-      const cacheData = PRETTY_CACHE.get(cacheKey);
+      const cacheData = client.cache.get(cacheKey);
       if (cacheData) {
         // 缓存未过期
         await delay(0);
@@ -216,7 +221,7 @@ const sendSequest = async <T = Response>(
         headers: req.headers,
       });
       if (useCache && cacheKey) {
-        PRETTY_CACHE.set(cacheKey, response.clone(), cacheTime);
+        client.cache.set(cacheKey, response.clone(), cacheTime);
       }
     }
 
@@ -231,7 +236,7 @@ const sendSequest = async <T = Response>(
     }
 
     return result;
-    
+
   } catch (e: any) {
     // 重试
     if (retryCount > 0) {
@@ -273,7 +278,7 @@ class LRUCache<K, V> {
   set(key: K, value: V, activeTime: number): void {
     // 如果键已经存在，先删除它以移动到队尾
     if (this.cache.has(key)) {
-      this.cache.delete(key);
+      this.delete(key);
     }
 
     const expirationTime = Date.now() + activeTime;
@@ -282,7 +287,7 @@ class LRUCache<K, V> {
     // 如果超出最大容量，移除最旧的键
     if (this.size > this.maxSize) {
       const oldestKey = this.cache.keys().next().value;
-      oldestKey && this.cache.delete(oldestKey);
+      oldestKey && this.delete(oldestKey);
     }
   }
 
@@ -299,12 +304,12 @@ class LRUCache<K, V> {
 
     // 如果已过期，删除缓存并返回 null
     if (Date.now() > expirationTime) {
-      this.cache.delete(key);
+      this.delete(key);
       return null;
     }
 
     // 移到队尾
-    this.cache.delete(key);
+    this.delete(key);
     this.cache.set(key, item);
 
     return value;
@@ -317,6 +322,18 @@ class LRUCache<K, V> {
   get size(): number {
     return this.cache.size;
   }
-}
 
-const PRETTY_CACHE = new LRUCache<string, Response>(10000);
+  /**
+   * 清空缓存
+   */
+  clear() {
+    this.cache.clear();
+  }
+
+  /**
+   * 删除缓存项
+   */
+  delete(key: K) {
+    return this.cache.delete(key);
+  }
+}
