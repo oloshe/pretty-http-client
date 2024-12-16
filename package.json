@@ -1,6 +1,6 @@
 {
   "name": "pretty-http-client",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "",
   "type": "module",
   "main": "./dist/index.umd.cjs",
