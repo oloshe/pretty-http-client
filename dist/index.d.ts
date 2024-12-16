@@ -132,5 +132,9 @@ declare class LRUCache<K, V> {
      * 清空缓存
      */
     clear(): void;
+    /**
+     * 删除缓存项
+     */
+    delete(key: K): boolean;
 }
 export {};
