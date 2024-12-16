@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { it, expect } from "vitest";
 import { createHttpClient } from "../src/index";
 import { delay } from "msw";
 
@@ -13,7 +13,7 @@ it("get", async () => {
   expect(resp).toBe("mock data");
 });
 
-it("get - cache match path", async () => {
+it("get - cache", async () => {
   const client = createHttpClient({
     prefix: "https://example.com",
     hooks: {
@@ -24,7 +24,7 @@ it("get - cache match path", async () => {
     client.get<number>("/timestamp", {
       cache: {
         milliseconds: 100,
-        matchType: "path",
+        matcher: (_, req) => req.url,
       },
     });
   const timestamp1 = await getData();
@@ -34,29 +34,6 @@ it("get - cache match path", async () => {
   expect(timestamp2).toEqual(timestamp1);
   await delay(51);
   const timestamp3 = await getData();
-  expect(timestamp3).not.toEqual(timestamp1);
-});
-
-it("get - cache match url", async () => {
-  const client = createHttpClient({
-    prefix: "https://example.com",
-    hooks: {
-      afterResponse: [(client, req, res) => res.json()],
-    },
-  });
-  const getData = (searchParams: Record<string, any>) =>
-    client.get<number>("/timestamp", {
-      searchParams: searchParams,
-      cache: {
-        milliseconds: 100,
-        matchType: "url",
-      },
-    });
-  const timestamp1 = await getData({ id: 1 });
-  await delay(10);
-  const timestamp2 = await getData({ id: 1 });
-  expect(timestamp2).toEqual(timestamp1);
-  const timestamp3 = await getData({ id: 2 });
   expect(timestamp3).not.toEqual(timestamp1);
 });
 
@@ -77,7 +54,7 @@ it("post - json", async () => {
     address: string;
   }
 
-  const resp = await client.post<{ msg: string; data: { body: BodyData } }>(
+  const resp = await client.post<{ msg: string; data: { body: BodyData; query: any } }>(
     "/post",
     {
       data: {
@@ -85,12 +62,18 @@ it("post - json", async () => {
         age: 18,
         address: "New York",
       },
+      searchParams: {
+        noNull: null,
+        noUndefined: undefined
+      }
     }
   );
   expect(resp.msg).toBe("ok");
   expect(resp.data.body.name).toBe("John");
   expect(resp.data.body.age).toBe(18);
   expect(resp.data.body.address).toBe("New York");
+  expect(resp.data.query.noNull).toBeUndefined();
+  expect(resp.data.query.noUndefined).toBeUndefined();
 });
 
 it("post - FormData", async () => {

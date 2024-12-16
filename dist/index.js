@@ -1,71 +1,72 @@
 const g = (e) => {
-  var c, h, s, u;
-  const a = (d) => (f, m) => b(r, { ...m, url: f, method: d }), r = {
+  var c, h, f, l;
+  const r = (y) => (u, d) => n(a, { ...d, url: u, method: y }), a = {
     prefix: (e == null ? void 0 : e.prefix) ?? "",
     alias: (e == null ? void 0 : e.alias) ?? "",
     headers: { ...e == null ? void 0 : e.headers },
     hooks: {
       beforeRequest: ((c = e == null ? void 0 : e.hooks) == null ? void 0 : c.beforeRequest) || [],
       afterResponse: ((h = e == null ? void 0 : e.hooks) == null ? void 0 : h.afterResponse) || [],
-      beforeRetry: ((s = e == null ? void 0 : e.hooks) == null ? void 0 : s.beforeRetry) || [],
-      catchError: ((u = e == null ? void 0 : e.hooks) == null ? void 0 : u.catchError) || []
+      beforeRetry: ((f = e == null ? void 0 : e.hooks) == null ? void 0 : f.beforeRetry) || [],
+      catchError: ((l = e == null ? void 0 : e.hooks) == null ? void 0 : l.catchError) || []
     },
     retryCount: (e == null ? void 0 : e.retryCount) ?? 0,
     retryTimeout: (e == null ? void 0 : e.retryTimeout) ?? 0,
-    get: a("GET"),
-    post: a("POST"),
-    put: a("PUT"),
-    delete: a("DELETE"),
-    patch: a("PATCH"),
-    head: a("HEAD")
+    get: r("GET"),
+    post: r("POST"),
+    put: r("PUT"),
+    delete: r("DELETE"),
+    patch: r("PATCH"),
+    head: r("HEAD")
   };
-  return r;
-}, b = async (e, a) => {
-  var w, C;
-  const r = Object.assign(a, {
-    headers: { ...e.headers, ...a.headers },
-    searchParams: a.searchParams || {},
-    data: a.data || null
-  }), c = a.retryCount ?? e.retryCount;
+  return a;
+}, n = async (e, r) => {
+  var b, w;
+  const a = Object.assign(r, {
+    headers: { ...e.headers, ...r.headers },
+    searchParams: r.searchParams || {},
+    data: r.data || null
+  }), c = r.retryCount ?? e.retryCount;
   for (const t of e.hooks.beforeRequest ?? [])
-    await t(e, r);
-  const h = e.prefix + r.url, s = new URLSearchParams(r.searchParams).toString(), u = s ? `${h}?${s}` : h;
+    await t(e, a);
+  const h = e.prefix + a.url, f = Object.fromEntries(
+    Object.entries(a.searchParams).filter(([t, s]) => s != null)
+  ), l = new URLSearchParams(f).toString(), y = l ? `${h}?${l}` : h;
+  let u;
+  a.method !== "GET" && a.method !== "HEAD" && (a.data instanceof FormData ? u = a.data : typeof a.data == "object" && a.data !== null ? u = JSON.stringify(a.data) : u = a.data);
   let d;
-  r.method !== "GET" && r.method !== "HEAD" && (r.data instanceof FormData ? d = r.data : typeof r.data == "object" && r.data !== null ? d = JSON.stringify(r.data) : d = r.data);
-  let f;
-  const m = ((w = a.cache) == null ? void 0 : w.milliseconds) ?? 0, T = m > 0;
-  let y;
-  if (T) {
-    ((C = a.cache) == null ? void 0 : C.matchType) === "url" ? y = u : y = u.split("?")[0];
-    const t = R.get(y);
-    t && (await E(0), f = t.clone());
+  const T = ((b = r.cache) == null ? void 0 : b.milliseconds) ?? 0, E = T > 0;
+  let m;
+  if (E && (m = (w = r.cache) == null ? void 0 : w.matcher(e, a), m)) {
+    const t = R.get(m);
+    t && (await C(0), d = t.clone());
   }
   try {
-    f === void 0 && (f = await fetch(u, {
-      method: r.method,
-      body: d,
-      headers: r.headers
-    }), T && R.set(y, f.clone(), m));
-    let t = f;
-    for (const l of e.hooks.afterResponse) {
-      const x = await l(e, r, t);
-      t !== void 0 && (t = x);
+    d === void 0 && (d = await fetch(y, {
+      method: a.method,
+      body: u,
+      headers: a.headers
+    }), E && m && R.set(m, d.clone(), T));
+    let t = d;
+    for (const s of e.hooks.afterResponse) {
+      const P = await s(e, a, t);
+      t !== void 0 && (t = P);
     }
     return t;
   } catch (t) {
     if (c > 0) {
-      for (const l of e.hooks.beforeRetry)
-        l(e, a);
-      return await E(e.retryTimeout), b(e, { ...a, retryCount: c - 1 });
+      for (const s of e.hooks.beforeRetry)
+        s(e, r);
+      return await C(e.retryTimeout), n(e, { ...r, retryCount: c - 1 });
     }
-    for (const l of e.hooks.catchError)
-      l(t);
+    for (const s of e.hooks.catchError)
+      s(t);
     throw t;
   }
-}, E = (e = 0) => new Promise((a) => setTimeout(() => a(), e));
-class P {
-  constructor(a) {
-    this.cache = /* @__PURE__ */ new Map(), this.maxSize = a;
+}, C = (e = 0) => new Promise((r) => setTimeout(() => r(), e));
+class x {
+  constructor(r) {
+    this.cache = /* @__PURE__ */ new Map(), this.maxSize = r;
   }
   /**
    * 添加缓存
@@ -73,12 +74,12 @@ class P {
    * @param value 值
    * @param activeTime 有效时间（毫秒）
    */
-  set(a, r, c) {
-    this.cache.has(a) && this.cache.delete(a);
+  set(r, a, c) {
+    this.cache.has(r) && this.cache.delete(r);
     const h = Date.now() + c;
-    if (this.cache.set(a, { value: r, expirationTime: h }), this.size > this.maxSize) {
-      const s = this.cache.keys().next().value;
-      s && this.cache.delete(s);
+    if (this.cache.set(r, { value: a, expirationTime: h }), this.size > this.maxSize) {
+      const f = this.cache.keys().next().value;
+      f && this.cache.delete(f);
     }
   }
   /**
@@ -86,11 +87,11 @@ class P {
    * @param key 键
    * @returns 值或者 null（过期或不存在时）
    */
-  get(a) {
-    const r = this.cache.get(a);
-    if (!r) return null;
-    const { value: c, expirationTime: h } = r;
-    return Date.now() > h ? (this.cache.delete(a), null) : (this.cache.delete(a), this.cache.set(a, r), c);
+  get(r) {
+    const a = this.cache.get(r);
+    if (!a) return null;
+    const { value: c, expirationTime: h } = a;
+    return Date.now() > h ? (this.cache.delete(r), null) : (this.cache.delete(r), this.cache.set(r, a), c);
   }
   /**
    * 获取当前缓存大小
@@ -100,7 +101,7 @@ class P {
     return this.cache.size;
   }
 }
-const R = new P(1e4);
+const R = new x(1e4);
 export {
   g as createHttpClient
 };

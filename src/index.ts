@@ -26,7 +26,7 @@ export interface RequestOptions {
   method: HttpMethod;
   /** 请求头 */
   headers?: Record<string, string>;
-  /** 请求URL参数 */
+  /** 请求URL参数, 会过滤掉 undefined 和 null 的字段 */
   searchParams?: Record<string, any>;
   /** 请求体 */
   data?: string | Record<string, any> | FormData | null;
@@ -40,7 +40,7 @@ export interface CacheOptions {
   /** 缓存的时长，单位毫秒 */
   milliseconds?: number;
   /** 缓存的匹配类型， 如果是 url 则是匹配完整的 url, 如果是 path 则仅匹配路径，默认为 path*/
-  matchType?: "path" | "url";
+  matcher: (client: HttpClient, req: RequestData) => string;
 }
 
 /** 请求预处理方法 */
@@ -170,7 +170,10 @@ const sendSequest = async <T = Response>(
   }
 
   const baseUrl = client.prefix + req.url;
-  const query = new URLSearchParams(req.searchParams).toString();
+  const filteredParams = Object.fromEntries(
+    Object.entries(req.searchParams).filter(([_, value]) => value !== undefined && value !== null)
+  );
+  const query = new URLSearchParams(filteredParams).toString();
   const url = query ? `${baseUrl}?${query}` : baseUrl;
 
   let body: BodyInit | undefined | null;
@@ -193,16 +196,14 @@ const sendSequest = async <T = Response>(
   let cacheKey: string | undefined;
   // 若使用缓存，则先尝试从缓存中获取数据
   if (useCache) {
-    if (options.cache?.matchType === "url") {
-      cacheKey = url;
-    } else {
-      cacheKey = url.split("?")[0];
-    }
-    const cacheData = PRETTY_CACHE.get(cacheKey);
-    if (cacheData) {
-      // 缓存未过期
-      await delay(0);
-      response = cacheData.clone();
+    cacheKey = options.cache?.matcher(client, req);
+    if (cacheKey) {
+      const cacheData = PRETTY_CACHE.get(cacheKey);
+      if (cacheData) {
+        // 缓存未过期
+        await delay(0);
+        response = cacheData.clone();
+      }
     }
   }
 
@@ -214,8 +215,8 @@ const sendSequest = async <T = Response>(
         body: body,
         headers: req.headers,
       });
-      if (useCache) {
-        PRETTY_CACHE.set(cacheKey!, response.clone(), cacheTime);
+      if (useCache && cacheKey) {
+        PRETTY_CACHE.set(cacheKey, response.clone(), cacheTime);
       }
     }
 
