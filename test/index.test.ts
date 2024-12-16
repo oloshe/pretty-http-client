@@ -140,6 +140,9 @@ it("hook - afterResponse", async () => {
             throw msg;
           }
         },
+        (client, req, res: BaseResponse) => {
+          console.log('response is', res);
+        },
       ],
     },
   });

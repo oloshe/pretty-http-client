@@ -1,6 +1,6 @@
 const g = (e) => {
   var c, h, f, l;
-  const r = (y) => (u, d) => n(a, { ...d, url: u, method: y }), a = {
+  const r = (y) => (u, d) => P(a, { ...d, url: u, method: y }), a = {
     prefix: (e == null ? void 0 : e.prefix) ?? "",
     alias: (e == null ? void 0 : e.alias) ?? "",
     headers: { ...e == null ? void 0 : e.headers },
@@ -20,7 +20,7 @@ const g = (e) => {
     head: r("HEAD")
   };
   return a;
-}, n = async (e, r) => {
+}, P = async (e, r) => {
   var b, w;
   const a = Object.assign(r, {
     headers: { ...e.headers, ...r.headers },
@@ -38,32 +38,32 @@ const g = (e) => {
   const T = ((b = r.cache) == null ? void 0 : b.milliseconds) ?? 0, E = T > 0;
   let m;
   if (E && (m = (w = r.cache) == null ? void 0 : w.matcher(e, a), m)) {
-    const t = R.get(m);
-    t && (await C(0), d = t.clone());
+    const t = n.get(m);
+    t && (await R(0), d = t.clone());
   }
   try {
     d === void 0 && (d = await fetch(y, {
       method: a.method,
       body: u,
       headers: a.headers
-    }), E && m && R.set(m, d.clone(), T));
+    }), E && m && n.set(m, d.clone(), T));
     let t = d;
     for (const s of e.hooks.afterResponse) {
-      const P = await s(e, a, t);
-      t !== void 0 && (t = P);
+      const C = await s(e, a, t);
+      C !== void 0 && (t = C);
     }
     return t;
   } catch (t) {
     if (c > 0) {
       for (const s of e.hooks.beforeRetry)
         s(e, r);
-      return await C(e.retryTimeout), n(e, { ...r, retryCount: c - 1 });
+      return await R(e.retryTimeout), P(e, { ...r, retryCount: c - 1 });
     }
     for (const s of e.hooks.catchError)
       s(t);
     throw t;
   }
-}, C = (e = 0) => new Promise((r) => setTimeout(() => r(), e));
+}, R = (e = 0) => new Promise((r) => setTimeout(() => r(), e));
 class x {
   constructor(r) {
     this.cache = /* @__PURE__ */ new Map(), this.maxSize = r;
@@ -101,7 +101,7 @@ class x {
     return this.cache.size;
   }
 }
-const R = new x(1e4);
+const n = new x(1e4);
 export {
   g as createHttpClient
 };

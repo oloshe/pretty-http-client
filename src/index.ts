@@ -225,7 +225,7 @@ const sendSequest = async <T = Response>(
     // 如果返回值不为 undefined，则替换为返回值
     for (const fn of client.hooks.afterResponse) {
       const tempory = await fn(client, req, result);
-      if (result !== undefined) {
+      if (tempory !== undefined) {
         result = tempory;
       }
     }
