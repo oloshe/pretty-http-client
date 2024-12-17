@@ -1,13 +1,13 @@
 const S = (e) => {
-  var c, h, f, l;
-  const r = (y) => (u, d) => x(a, { ...d, url: u, method: y }), a = {
+  var c, h, d, l;
+  const r = (y) => (u, s) => x(a, { ...s, url: u, method: y }), a = {
     prefix: (e == null ? void 0 : e.prefix) ?? "",
     alias: (e == null ? void 0 : e.alias) ?? "",
     headers: { ...e == null ? void 0 : e.headers },
     hooks: {
       beforeRequest: ((c = e == null ? void 0 : e.hooks) == null ? void 0 : c.beforeRequest) || [],
       afterResponse: ((h = e == null ? void 0 : e.hooks) == null ? void 0 : h.afterResponse) || [],
-      beforeRetry: ((f = e == null ? void 0 : e.hooks) == null ? void 0 : f.beforeRetry) || [],
+      beforeRetry: ((d = e == null ? void 0 : e.hooks) == null ? void 0 : d.beforeRetry) || [],
       catchError: ((l = e == null ? void 0 : e.hooks) == null ? void 0 : l.catchError) || []
     },
     retryCount: (e == null ? void 0 : e.retryCount) ?? 0,
@@ -30,38 +30,38 @@ const S = (e) => {
   }), c = r.retryCount ?? e.retryCount;
   for (const t of e.hooks.beforeRequest ?? [])
     await t(e, a);
-  const h = e.prefix + a.url, f = Object.fromEntries(
-    Object.entries(a.searchParams).filter(([t, s]) => s != null)
-  ), l = new URLSearchParams(f).toString(), y = l ? `${h}?${l}` : h;
+  const h = e.prefix + a.url, d = Object.fromEntries(
+    Object.entries(a.searchParams).filter(([t, f]) => f != null)
+  ), l = new URLSearchParams(d).toString(), y = l ? `${h}?${l}` : h;
   let u;
   a.method !== "GET" && a.method !== "HEAD" && (a.data instanceof FormData ? u = a.data : typeof a.data == "object" && a.data !== null ? u = JSON.stringify(a.data) : u = a.data);
-  let d;
+  let s;
   const T = ((w = r.cache) == null ? void 0 : w.milliseconds) ?? 0, b = T > 0;
   let m;
   if (b && (m = (E = r.cache) == null ? void 0 : E.matcher(e, a), m)) {
     const t = e.cache.get(m);
-    t && (await C(0), d = t.clone());
+    t && (await C(0), s = t.clone());
   }
   try {
-    d === void 0 && (d = await fetch(y, {
+    s === void 0 && (s = await fetch(y, {
       method: a.method,
       body: u,
       headers: a.headers
-    }), b && m && e.cache.set(m, d.clone(), T));
-    let t = d;
-    for (const s of e.hooks.afterResponse) {
-      const R = await s(e, a, t);
+    }), b && m && s.ok && e.cache.set(m, s.clone(), T));
+    let t = s;
+    for (const f of e.hooks.afterResponse) {
+      const R = await f(e, a, t);
       R !== void 0 && (t = R);
     }
     return t;
   } catch (t) {
     if (c > 0) {
-      for (const s of e.hooks.beforeRetry)
-        s(e, r);
+      for (const f of e.hooks.beforeRetry)
+        f(e, r);
       return await C(e.retryTimeout), x(e, { ...r, retryCount: c - 1 });
     }
-    for (const s of e.hooks.catchError)
-      s(t);
+    for (const f of e.hooks.catchError)
+      f(t);
     throw t;
   }
 }, C = (e = 0) => new Promise((r) => setTimeout(() => r(), e));
@@ -79,8 +79,8 @@ class P {
     this.cache.has(r) && this.delete(r);
     const h = Date.now() + c;
     if (this.cache.set(r, { value: a, expirationTime: h }), this.size > this.maxSize) {
-      const f = this.cache.keys().next().value;
-      f && this.delete(f);
+      const d = this.cache.keys().next().value;
+      d && this.delete(d);
     }
   }
   /**

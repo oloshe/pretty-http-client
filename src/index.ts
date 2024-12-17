@@ -220,7 +220,7 @@ const sendSequest = async <T = Response>(
         body: body,
         headers: req.headers,
       });
-      if (useCache && cacheKey) {
+      if (useCache && cacheKey && response.ok) {
         client.cache.set(cacheKey, response.clone(), cacheTime);
       }
     }

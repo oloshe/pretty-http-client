@@ -38,6 +38,7 @@ it("get - cache", async () => {
   const timestamp3 = await getData();
   expect(timestamp3).not.toEqual(timestamp1);
 
+  // cache size
   expect(client.cache.size).toBe(1);
   await Promise.all([
     getData({ a: 1 }),
@@ -48,6 +49,8 @@ it("get - cache", async () => {
   expect(client.cache.size).toBe(3);
   client.cache.clear();
   expect(client.cache.size).toBe(0);
+
+  // TODO: no cache error response
 });
 
 it("post - json", async () => {
