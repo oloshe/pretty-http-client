@@ -138,7 +138,6 @@ it("hook - beforeRequest", async () => {
 });
 
 it("hook - afterResponse", async () => {
-  let errorHappened = false;
   interface BaseResponse<T = any> {
     code: number;
     msg: string;
@@ -161,11 +160,6 @@ it("hook - afterResponse", async () => {
           console.log("response is", res);
         },
       ],
-      catchError: [
-        (e) => {
-          errorHappened = true;
-        },
-      ],
     },
   });
   const getBusiness = (error: boolean) =>
@@ -173,7 +167,6 @@ it("hook - afterResponse", async () => {
   const resp = await getBusiness(false);
   expect(resp.name).toBe("test");
   await expect(getBusiness(true)).rejects.toThrow("error");
-  expect(errorHappened).toBe(true);
 });
 
 it("retry", async () => {

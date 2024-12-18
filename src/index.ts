@@ -223,38 +223,39 @@ const sendSequest = async <T = Response>(
       if (useCache && cacheKey && response.ok) {
         client.cache.set(cacheKey, response.clone(), cacheTime);
       }
-    }
-
-    let result: T = response as T;
-    // 钩子: afterResponse
-    // 如果返回值不为 undefined，则替换为返回值
-    for (const fn of client.hooks.afterResponse) {
-      const tempory = await fn(client, req, result);
-      if (tempory !== undefined) {
-        result = tempory;
+      if (!response.ok) {
+        if (retryCount > 0) {
+          // 触发hook
+          for (const fn of client.hooks.beforeRetry) {
+            fn(client, options);
+          }
+    
+          // 等待一段时间再重试
+          await delay(client.retryTimeout);
+          // 重新发送请求
+          return sendSequest(client, { ...options, retryCount: retryCount - 1 });
+        }
       }
     }
-
-    return result;
 
   } catch (e: any) {
-    // 重试
-    if (retryCount > 0) {
-      // 触发hook
-      for (const fn of client.hooks.beforeRetry) {
-        fn(client, options);
-      }
-
-      // 等待一段时间再重试
-      await delay(client.retryTimeout);
-      // 重新发送请求
-      return sendSequest(client, { ...options, retryCount: retryCount - 1 });
-    }
     for (const fn of client.hooks.catchError) {
       fn(e);
     }
     throw e;
   }
+
+  let result: T = response as T;
+  // 钩子: afterResponse
+  // 如果返回值不为 undefined，则替换为返回值
+  for (const fn of client.hooks.afterResponse) {
+    const tempory = await fn(client, req, result);
+    if (tempory !== undefined) {
+      result = tempory;
+    }
+  }
+
+  return result;
 };
 
 const delay = (ms: number = 0) =>
