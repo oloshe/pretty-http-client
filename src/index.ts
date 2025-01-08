@@ -2,7 +2,7 @@
  * 请求数据
  */
 export interface RequestData {
-  /** 请求url */
+  /** 请求url, 不包含 prefix */
   url: string;
   /** Http方法 */
   method: HttpMethod;
@@ -14,6 +14,7 @@ export interface RequestData {
   data: Record<string, any> | FormData | string | null;
 }
 
+/** http方法 */
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD";
 
 /**
@@ -34,10 +35,14 @@ export interface RequestOptions {
   retryCount?: number;
   /** 缓存规则，只有 GET 方法生效 */
   cache?: CacheOptions;
+  /** 钩子 */
+  hooks?: Partial<ClientHook>;
+  /** 请求前缀，如果设置了则会覆盖 client.prefix */
+  prefix?: string;
 }
 
 export interface CacheOptions {
-  /** 缓存的时长，单位毫秒 */
+  /** 缓存的时长，单位毫秒，如果时间是 0 或小于0 则表示无限制，默认为 0 */
   milliseconds?: number;
   /** 缓存的匹配类型， 如果是 url 则是匹配完整的 url, 如果是 path 则仅匹配路径，默认为 path*/
   matcher: (client: HttpClient, req: RequestData) => string;
@@ -61,7 +66,7 @@ export type BeforeRetry = (client: HttpClient, options: RequestOptions) => void;
 /** 错误时的拦截方法 */
 export type CatchError = (e: any) => void;
 
-interface CreateHttpClientOptions<T = Response> {
+interface CreateHttpClientOptions {
   /** 请求前缀 */
   prefix?: string;
   /** 别名 */
@@ -74,11 +79,12 @@ interface CreateHttpClientOptions<T = Response> {
   retryCount?: number;
   /** 重试延迟 */
   retryTimeout?: number;
-  /** 缓存大小 */
+  /** 缓存大小, LRUCache的最大容量 */
   cacheSize?: number;
 }
 
 type MethodRequest = <T = Response>(
+  /** 请求url */
   url: string,
   options?: Partial<RequestOptions>
 ) => Promise<T>;
@@ -86,7 +92,7 @@ type MethodRequest = <T = Response>(
 interface ClientHook {
   /** 请求前钩子 */
   beforeRequest: BeforeRequest[];
-  /** 请求后钩子 */
+  /** 请求后钩子, 如果返回值不为 undefined，则替换为返回值 */
   afterResponse: AfterResponse<any>[];
   /** 重试钩子 */
   beforeRetry: BeforeRetry[];
@@ -126,9 +132,7 @@ interface HttpClient {
   readonly head: MethodRequest;
 }
 
-export const createHttpClient = <T = Response>(
-  options?: CreateHttpClientOptions<T>
-) => {
+export const createHttpClient = (options?: CreateHttpClientOptions) => {
   const _sendSequest =
     (method: HttpMethod): MethodRequest =>
     (url, options) =>
@@ -170,13 +174,17 @@ const sendSequest = async <T = Response>(
   const retryCount = options.retryCount ?? client.retryCount;
 
   // 钩子: beforeRequest
-  for (const fn of client.hooks.beforeRequest ?? []) {
+  const beforeRequest = options.hooks?.beforeRequest ?? client.hooks.beforeRequest ?? [];
+  for (const fn of beforeRequest) {
     await fn(client, req);
   }
 
-  const baseUrl = client.prefix + req.url;
+  const prefix = options.prefix ?? client.prefix;
+  const baseUrl = prefix + req.url;
   const filteredParams = Object.fromEntries(
-    Object.entries(req.searchParams).filter(([_, value]) => value !== undefined && value !== null)
+    Object.entries(req.searchParams).filter(
+      ([_, value]) => value !== undefined && value !== null
+    )
   );
   const query = new URLSearchParams(filteredParams).toString();
   const url = query ? `${baseUrl}?${query}` : baseUrl;
@@ -196,8 +204,8 @@ const sendSequest = async <T = Response>(
 
   // 缓存时间
   const cacheTime = options.cache?.milliseconds ?? 0;
-  // 是否使用缓存
-  const useCache = cacheTime > 0;
+  // 是否使用缓存, 如果有machter，则表示使用缓存
+  const useCache = typeof options.cache?.matcher === "function";
   let cacheKey: string | undefined;
   // 若使用缓存，则先尝试从缓存中获取数据
   if (useCache) {
@@ -226,20 +234,24 @@ const sendSequest = async <T = Response>(
       if (!response.ok) {
         if (retryCount > 0) {
           // 触发hook
-          for (const fn of client.hooks.beforeRetry) {
+          const beforeRetry = options.hooks?.beforeRetry ?? client.hooks.beforeRetry ?? [];
+          for (const fn of beforeRetry) {
             fn(client, options);
           }
-    
+
           // 等待一段时间再重试
           await delay(client.retryTimeout);
           // 重新发送请求
-          return sendSequest(client, { ...options, retryCount: retryCount - 1 });
+          return sendSequest(client, {
+            ...options,
+            retryCount: retryCount - 1,
+          });
         }
       }
     }
-
   } catch (e: any) {
-    for (const fn of client.hooks.catchError) {
+    const catchError = options.hooks?.catchError ?? client.hooks.catchError ?? [];
+    for (const fn of catchError) {
       fn(e);
     }
     throw e;
@@ -248,7 +260,8 @@ const sendSequest = async <T = Response>(
   let result: T = response as T;
   // 钩子: afterResponse
   // 如果返回值不为 undefined，则替换为返回值
-  for (const fn of client.hooks.afterResponse) {
+  const afterResponse = options.hooks?.afterResponse ?? client.hooks.afterResponse ?? [];
+  for (const fn of afterResponse) {
     const tempory = await fn(client, req, result);
     if (tempory !== undefined) {
       result = tempory;
@@ -261,12 +274,14 @@ const sendSequest = async <T = Response>(
 const delay = (ms: number = 0) =>
   new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
 
+interface CacheValue<V> { value: V; expirationTime: number | null }
 class LRUCache<K, V> {
-  private cache: Map<K, { value: V; expirationTime: number }>;
+  
+  private cache: Map<K, CacheValue<V>>;
   private maxSize: number;
 
   constructor(maxSize: number) {
-    this.cache = new Map<K, { value: V; expirationTime: number }>();
+    this.cache = new Map();
     this.maxSize = maxSize;
   }
 
@@ -282,8 +297,10 @@ class LRUCache<K, V> {
       this.delete(key);
     }
 
-    const expirationTime = Date.now() + activeTime;
-    this.cache.set(key, { value, expirationTime });
+    this.cache.set(key, { 
+      value, 
+      expirationTime: activeTime > 0 ? Date.now() + activeTime : null,
+     });
 
     // 如果超出最大容量，移除最旧的键
     if (this.size > this.maxSize) {
@@ -304,9 +321,11 @@ class LRUCache<K, V> {
     const { value, expirationTime } = item;
 
     // 如果已过期，删除缓存并返回 null
-    if (Date.now() > expirationTime) {
-      this.delete(key);
-      return null;
+    if (expirationTime !== null) {
+      if (Date.now() > expirationTime) {
+        this.delete(key);
+        return null;
+      }
     }
 
     // 移到队尾

@@ -1,0 +1,5 @@
+## [1.4.0] - 2025-01-08
+
+### Added
+- 在 `RequestOptions` 中 增加 `hooks` 和 `prefix` 配置
+- 测试覆盖率完善到100%

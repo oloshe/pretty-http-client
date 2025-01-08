@@ -2,9 +2,11 @@ import { it, expect } from "vitest";
 import { createHttpClient } from "../src/index";
 import { delay } from "msw";
 
+const TEST_API_URL = "https://example.com";
+
 it("get", async () => {
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     hooks: {
       afterResponse: [(client, req, res) => res.json()],
     },
@@ -14,48 +16,48 @@ it("get", async () => {
 });
 
 it("get - cache", async () => {
+  const cacheSize = 3;
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     hooks: {
       afterResponse: [(client, req, res) => res.json()],
     },
-    cacheSize: 3,
+    cacheSize: cacheSize,
   });
-  const getData = (params?: any) =>
-    client.get<number>("/timestamp", {
+  const echo = (params?: any) =>
+    client.get<number>("/echo", {
       searchParams: params,
       cache: {
         milliseconds: 100,
-        matcher: (_, req) => req.url + JSON.stringify(req.searchParams),
+        matcher: (_, req) => req.url + '-' + req.searchParams.a,
       },
     });
-  const timestamp1 = await getData();
-  const timestamp2 = await getData();
+  const r1 = await echo({ t: 1 });
+  const r2 = await echo({ t: 2 });
   // 由于缓存，所以两次请求返回的都是同一个时间戳
-  expect(timestamp2).toEqual(timestamp1);
+  expect(r2).toEqual(r1);
   expect(client.cache.size).toBe(1);
-  await delay(150);
-  const timestamp3 = await getData();
-  expect(timestamp3).not.toEqual(timestamp1);
+  // 缓存过期了，新请求的结果将不一样
+  await delay(101);
+  const r3 = await echo();
+  expect(r3).not.toEqual(r1);
 
   // cache size
   expect(client.cache.size).toBe(1);
-  await Promise.all([
-    getData({ a: 1 }),
-    getData({ a: 2 }),
-    getData({ a: 3 }),
-    getData({ a: 4 }),
-  ]);
-  expect(client.cache.size).toBe(3);
+  const arr = new Array(cacheSize * 2).fill(0);
+  await Promise.all(arr.map((_, i) => echo({ a: i })));
+  expect(client.cache.size).toBe(cacheSize);
+  const last = arr.length - 1;
+  client.cache.set(`/echo-${last}`, new Response('"manually"'), 0);
+  expect(client.cache.size).toBe(cacheSize);
+  expect(await echo({ a: last })).toBe('manually');
   client.cache.clear();
   expect(client.cache.size).toBe(0);
-
-  // TODO: no cache error response
 });
 
 it("post - json", async () => {
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     headers: {
       "Content-Type": "application/json",
     },
@@ -94,7 +96,7 @@ it("post - json", async () => {
 
 it("post - FormData", async () => {
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     hooks: {
       afterResponse: [(client, req, res) => res.json()],
     },
@@ -111,7 +113,7 @@ it("post - FormData", async () => {
 
 it("head", async () => {
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
   });
   const resp = await client.head<Response>("/head");
   expect(resp.status).toBe(200);
@@ -121,7 +123,7 @@ it("head", async () => {
 
 it("hook - beforeRequest", async () => {
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     hooks: {
       beforeRequest: [
         (client, req) => {
@@ -144,7 +146,7 @@ it("hook - afterResponse", async () => {
     data: T;
   }
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     hooks: {
       afterResponse: [
         (client, req, res) => res.json() as Promise<BaseResponse>,
@@ -157,7 +159,7 @@ it("hook - afterResponse", async () => {
           }
         },
         (client, req, res: BaseResponse) => {
-          console.log("response is", res);
+          // console.log("response is", res);
         },
       ],
     },
@@ -172,7 +174,7 @@ it("hook - afterResponse", async () => {
 it("retry", async () => {
   let retryCount = 0;
   const client = createHttpClient({
-    prefix: "https://example.com",
+    prefix: TEST_API_URL,
     hooks: {
       afterResponse: [(client, req, res) => res.json()],
       beforeRetry: [
@@ -189,4 +191,70 @@ it("retry", async () => {
     expect(resp.status).toBe(500);
   } catch (e) {}
   expect(retryCount).toBe(2);
+});
+
+it("hooks in RequestOptions", async () => {
+  const client = createHttpClient({
+    prefix: TEST_API_URL,
+    hooks: {
+      afterResponse: [
+        (client, req, res) => res.text(),
+      ],
+      beforeRequest: [
+        (client, req) => {
+          req.searchParams.argument = "test";
+          req.data = JSON.stringify({ name: "test" });
+        },
+      ],
+      catchError: [
+        (e) => {
+          console.log(e);
+        },
+      ]
+    },
+  });
+  const originData = JSON.parse(await client.post<string>("/post"));
+  expect(originData.msg).toBe('ok');
+  expect(originData.data.query.argument).toBe('test');
+  expect(originData.data.body.name).toBe('test');
+
+  const newData = await client.post<any>("/post", {
+    hooks: {
+      afterResponse: [
+        (client, req, res) => res.json(),
+        (client, req, res) => {
+          res.msg = 'okay';
+          return;
+        },
+      ],
+      beforeRequest: [
+        (client, req) => {
+          req.searchParams.argument = "new";
+          req.data = JSON.stringify({ name: "new" });
+        },
+      ],
+    }
+  });
+  expect(newData.msg).toBe('okay');
+  expect(newData.data.query.argument).toBe('new');
+  expect(newData.data.body.name).toBe('new');
+
+  let error = "";
+  try {
+    const response = await client.get('/404', {
+      prefix: 'xxx://pornhub.com',
+      hooks: {
+        afterResponse: [() => {
+          throw "error";
+        }],
+        catchError: [
+          (e) => {
+            error = e;
+          }
+        ]
+      }
+    });
+    expect(response.status).toBe(404);
+    expect(error).toBe("error");
+  } catch(e) {}
 });

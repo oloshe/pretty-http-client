@@ -53,6 +53,14 @@ const server = setupServer(
       });
     }
   }),
+  http.get('https://example.com/404', async (req, res, ctx) => {
+    return new Response(null, { status: 404 });
+  }),
+  http.get('https://example.com/echo', async ({request}) => {
+    const url = new URL(request.url);
+    const query = Object.fromEntries(new URLSearchParams(url.search).entries());
+    return HttpResponse.json(query);
+  }),
 );
 
 // 在 Jest 生命周期中控制服务器的启动和停止
