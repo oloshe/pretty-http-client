@@ -2,7 +2,7 @@
  * 请求数据
  */
 export interface RequestData {
-    /** 请求url */
+    /** 请求url, 不包含 prefix */
     url: string;
     /** Http方法 */
     method: HttpMethod;
@@ -13,6 +13,7 @@ export interface RequestData {
     /** body json 数据 */
     data: Record<string, any> | FormData | string | null;
 }
+/** http方法 */
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD";
 /**
  * 请求参数
@@ -32,9 +33,13 @@ export interface RequestOptions {
     retryCount?: number;
     /** 缓存规则，只有 GET 方法生效 */
     cache?: CacheOptions;
+    /** 钩子 */
+    hooks?: Partial<ClientHook>;
+    /** 请求前缀，如果设置了则会覆盖 client.prefix */
+    prefix?: string;
 }
 export interface CacheOptions {
-    /** 缓存的时长，单位毫秒 */
+    /** 缓存的时长，单位毫秒，如果时间是 0 或小于0 则表示无限制，默认为 0 */
     milliseconds?: number;
     /** 缓存的匹配类型， 如果是 url 则是匹配完整的 url, 如果是 path 则仅匹配路径，默认为 path*/
     matcher: (client: HttpClient, req: RequestData) => string;
@@ -47,7 +52,7 @@ export type AfterResponse<T = Response> = (client: HttpClient, req: RequestData,
 export type BeforeRetry = (client: HttpClient, options: RequestOptions) => void;
 /** 错误时的拦截方法 */
 export type CatchError = (e: any) => void;
-interface CreateHttpClientOptions<T = Response> {
+interface CreateHttpClientOptions {
     /** 请求前缀 */
     prefix?: string;
     /** 别名 */
@@ -60,14 +65,16 @@ interface CreateHttpClientOptions<T = Response> {
     retryCount?: number;
     /** 重试延迟 */
     retryTimeout?: number;
-    /** 缓存大小 */
+    /** 缓存大小, LRUCache的最大容量 */
     cacheSize?: number;
 }
-type MethodRequest = <T = Response>(url: string, options?: Partial<RequestOptions>) => Promise<T>;
+type MethodRequest = <T = Response>(
+/** 请求url */
+url: string, options?: Partial<RequestOptions>) => Promise<T>;
 interface ClientHook {
     /** 请求前钩子 */
     beforeRequest: BeforeRequest[];
-    /** 请求后钩子 */
+    /** 请求后钩子, 如果返回值不为 undefined，则替换为返回值 */
     afterResponse: AfterResponse<any>[];
     /** 重试钩子 */
     beforeRetry: BeforeRetry[];
@@ -105,7 +112,7 @@ interface HttpClient {
     /** HEAD 请求 */
     readonly head: MethodRequest;
 }
-export declare const createHttpClient: <T = Response>(options?: CreateHttpClientOptions<T>) => HttpClient;
+export declare const createHttpClient: (options?: CreateHttpClientOptions) => HttpClient;
 declare class LRUCache<K, V> {
     private cache;
     private maxSize;
