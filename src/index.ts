@@ -12,6 +12,8 @@ export interface RequestData {
   searchParams: Record<string, any>;
   /** body json 数据 */
   data: Record<string, any> | FormData | string | null;
+  /** 额外数据 */
+  extra: any;
 }
 
 /** http方法 */
@@ -39,6 +41,8 @@ export interface RequestOptions {
   hooks?: Partial<ClientHook>;
   /** 请求前缀，如果设置了则会覆盖 client.prefix */
   prefix?: string;
+  /** 传递额外数据，不参与实际请求 */
+  extra?: any;
 }
 
 export interface CacheOptions {
