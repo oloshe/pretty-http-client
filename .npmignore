@@ -1,5 +1,5 @@
 /.vscode
-/converage
+/coverage
 /src
 /test
 vitest.config.js
