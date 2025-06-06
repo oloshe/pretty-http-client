@@ -22,55 +22,56 @@ const H = (e) => {
   };
   return a;
 }, g = async (e, r) => {
-  var w, x, T, k, C, q, P;
+  var w, T, k, n, C, q, P;
   const a = Object.assign(r, {
     headers: { ...e.headers, ...r.headers },
-    searchParams: r.searchParams || {},
-    data: r.data || null
+    searchParams: { ...r.searchParams },
+    data: r.data || null,
+    extra: r.extra || {}
   }), c = r.retryCount ?? e.retryCount, h = ((w = r.hooks) == null ? void 0 : w.beforeRequest) ?? e.hooks.beforeRequest ?? [];
   for (const t of h)
     await t(e, a);
   const u = (r.prefix ?? e.prefix) + a.url, R = Object.fromEntries(
     Object.entries(a.searchParams).filter(
-      ([t, s]) => s != null
+      ([t, f]) => f != null
     )
   ), l = new URLSearchParams(R).toString(), b = l ? `${u}?${l}` : u;
   let m;
   a.method !== "GET" && a.method !== "HEAD" && (a.data instanceof FormData ? m = a.data : typeof a.data == "object" && a.data !== null ? m = JSON.stringify(a.data) : m = a.data);
-  let f;
-  const D = ((x = r.cache) == null ? void 0 : x.milliseconds) ?? 0, n = typeof ((T = r.cache) == null ? void 0 : T.matcher) == "function";
+  let s;
+  const D = ((T = r.cache) == null ? void 0 : T.milliseconds) ?? 0, E = typeof ((k = r.cache) == null ? void 0 : k.matcher) == "function";
   let d;
-  if (n && (d = (k = r.cache) == null ? void 0 : k.matcher(e, a), d)) {
+  if (E && (d = (n = r.cache) == null ? void 0 : n.matcher(e, a), d)) {
     const t = e.cache.get(d);
-    t && (await S(0), f = t.clone());
+    t && (await S(0), s = t.clone());
   }
   try {
-    if (f === void 0 && (f = await fetch(b, {
+    if (s === void 0 && (s = await fetch(b, {
       method: a.method,
       body: m,
       headers: a.headers
-    }), n && d && f.ok && e.cache.set(d, f.clone(), D), !f.ok && c > 0)) {
+    }), E && d && s.ok && e.cache.set(d, s.clone(), D), !s.ok && c > 0)) {
       const t = ((C = r.hooks) == null ? void 0 : C.beforeRetry) ?? e.hooks.beforeRetry ?? [];
-      for (const s of t)
-        s(e, r);
+      for (const f of t)
+        f(e, r);
       return await S(e.retryTimeout), g(e, {
         ...r,
         retryCount: c - 1
       });
     }
   } catch (t) {
-    const s = ((q = r.hooks) == null ? void 0 : q.catchError) ?? e.hooks.catchError ?? [];
-    for (const O of s)
+    const f = ((q = r.hooks) == null ? void 0 : q.catchError) ?? e.hooks.catchError ?? [];
+    for (const O of f)
       O(t);
     throw t;
   }
-  let E = f;
+  let x = s;
   const z = ((P = r.hooks) == null ? void 0 : P.afterResponse) ?? e.hooks.afterResponse ?? [];
   for (const t of z) {
-    const s = await t(e, a, E);
-    s !== void 0 && (E = s);
+    const f = await t(e, a, x);
+    f !== void 0 && (x = f);
   }
-  return E;
+  return x;
 }, S = (e = 0) => new Promise((r) => setTimeout(() => r(), e));
 class j {
   constructor(r) {

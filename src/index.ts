@@ -170,8 +170,9 @@ const sendSequest = async <T = Response>(
 ): Promise<T> => {
   const req: RequestData = Object.assign(options, {
     headers: { ...client.headers, ...options.headers },
-    searchParams: options.searchParams || {},
+    searchParams: { ...options.searchParams },
     data: options.data || null,
+    extra: options.extra || {},
   });
 
   // 重试次数
