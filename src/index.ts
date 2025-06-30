@@ -259,6 +259,15 @@ const sendSequest = async <T = Response>(
     for (const fn of catchError) {
       fn(e);
     }
+    if (retryCount > 0) {
+      // 等待一段时间再重试
+      await delay(client.retryTimeout);
+      // 重新发送请求
+      return sendSequest(client, {
+        ...options,
+        retryCount: retryCount - 1,
+      });
+    }
     throw e;
   }
 
