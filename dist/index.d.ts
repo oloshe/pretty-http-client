@@ -14,6 +14,8 @@ export interface RequestData {
     data: Record<string, any> | FormData | string | null;
     /** 额外数据 */
     extra: any;
+    /** 前缀 */
+    prefix?: string;
 }
 /** http方法 */
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD";
