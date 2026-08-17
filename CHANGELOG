@@ -1,23 +1,47 @@
-## [1.4.4] - 2025-10-29
+# Changelog
 
-- `RequestData` 中增加 `prefix` 字段，用于个性化处理请求
+## [2.0.0] - 2026-08-17
+
+### Breaking changes
+
+- HTTP status failures now throw `HttpError` by default.
+- Replaced `retryCount` and `retryTimeout` with the `retry` policy object.
+- Replaced `cacheSize` and `cache.milliseconds` with client/request `cache` objects and `ttl`.
+- Request hooks are merged after client hooks; a request hook category can be set to `false` to disable the client category.
+- Headers now use the native `Headers` type and request methods use lowercase `HttpMethod` values.
+- Removed `url` and `method` from method-level `RequestOptions`.
+- Replaced the UMD output with standard ESM and CommonJS builds.
+
+### Added
+
+- Total request timeout and caller-provided abort signals.
+- `HttpError` and `TimeoutError` with request/client context.
+- Configurable status validation and HTTP error throwing.
+- Method/status/network-aware retry policies with `Retry-After` support.
+- Deterministic prefix, URL, query, and JSON body handling.
+- Async, merged hooks and retry/error contexts.
+- Stable built-in error codes with a documented lookup table.
+- Minified ES2022 runtime builds and comprehensive Chinese source comments.
+- GET/HEAD LRU response caching with numeric or human-readable TTL values.
+- Complete public TypeScript types, README, license, CI, and 100% coverage thresholds.
+
+## [1.4.5] - 2025-10-29
+
+- Added `prefix` to `RequestData` for request-specific processing.
 
 ## [1.4.4] - 2025-06-30
 
-- 在 fetch 失败之后也重试
+- Retry requests after fetch failures.
 
 ## [1.4.2] - 2025-03-03
 
-### Optimize
-- .npmignore 移除 coverage // 之前拼写错了 >_<
+- Fixed the coverage entry in `.npmignore`.
 
 ## [1.4.1] - 2025-02-06
 
-### Added
-- 在 `RequestOptions` 中 增加 `extra` 额外字段，用于个性化处理请求
+- Added request-only `extra` metadata.
 
 ## [1.4.0] - 2025-01-08
 
-### Added
-- 在 `RequestOptions` 中 增加 `hooks` 和 `prefix` 配置
-- 测试覆盖率完善到100%
+- Added request-level hooks and prefix overrides.
+- Expanded test coverage.

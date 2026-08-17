@@ -1,7 +1,16 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    setupFiles: ['./test/setup.js'],
+    coverage: {
+      provider: "v8",
+      include: ["src/index.ts"],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
+    },
   },
-})
+});

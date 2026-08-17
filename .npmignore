@@ -2,6 +2,7 @@
 /coverage
 /src
 /test
-vitest.config.js
-vite.config.ts
-CHANGELOG
+/.github
+/vitest.config.js
+/vite.config.ts
+/tsconfig.json
